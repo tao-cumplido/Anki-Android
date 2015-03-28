@@ -2,6 +2,7 @@
  * Copyright (c) 2009 Andrew <andrewdubya@gmail.com>                                    *
  * Copyright (c) 2009 Nicolas Raoul <nicolas.raoul@gmail.com>                           *
  * Copyright (c) 2009 Edu Zamora <edu.zasu@gmail.com>                                   *
+ * Copyright (c) 2015 Tao Cumplido <taocumplido@gmail.com>                              *
  *                                                                                      *
  * This program is free software; you can redistribute it and/or modify it under        *
  * the terms of the GNU General Public License as published by the Free Software        *
@@ -36,7 +37,7 @@ public class Whiteboard extends View {
 
     private static final float TOUCH_TOLERANCE = 4;
 
-    private Paint mPaint;
+    private Paint mLinePaint, mPointPaint;
     private Bitmap mBitmap;
     private Canvas mCanvas;
     private Path mPath;
@@ -50,6 +51,8 @@ public class Whiteboard extends View {
 
     private float mX;
     private float mY;
+
+    private boolean mTouchMoved = false;
 
     private boolean mInvertedColors = false;
     private boolean mMonochrome = true;
@@ -75,15 +78,18 @@ public class Whiteboard extends View {
             }
         }
 
-        mPaint = new Paint();
-        mPaint.setAntiAlias(true);
-        mPaint.setDither(true);
-        mPaint.setColor(mForegroundColor);
-        mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeJoin(Paint.Join.ROUND);
-        mPaint.setStrokeCap(Paint.Cap.ROUND);
+        mLinePaint = new Paint();
+        mLinePaint.setAntiAlias(true);
+        mLinePaint.setDither(true);
+        mLinePaint.setColor(mForegroundColor);
+        mLinePaint.setStyle(Paint.Style.STROKE);
+        mLinePaint.setStrokeJoin(Paint.Join.ROUND);
+        mLinePaint.setStrokeCap(Paint.Cap.ROUND);
         int wbStrokeWidth = AnkiDroidApp.getSharedPrefs(context).getInt("whiteBoardStrokeWidth", 6);
-        mPaint.setStrokeWidth((float) wbStrokeWidth);
+        mLinePaint.setStrokeWidth((float) wbStrokeWidth);
+
+        mPointPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mPointPaint.setColor(mForegroundColor);
 
         createBitmap();
 
@@ -97,7 +103,7 @@ public class Whiteboard extends View {
         super.onDraw(canvas);
         canvas.drawColor(mBackgroundColor);
         canvas.drawBitmap(mBitmap, 0, 0, mBitmapPaint);
-        canvas.drawPath(mPath, mPaint);
+        canvas.drawPath(mPath, mLinePaint);
     }
 
 
@@ -220,15 +226,22 @@ public class Whiteboard extends View {
             mX = x;
             mY = y;
         }
+        mTouchMoved = true;
     }
 
 
     private void touchUp() {
-        mPath.lineTo(mX, mY);
-        // commit the path to our offscreen
-        mCanvas.drawPath(mPath, mPaint);
+        if (mTouchMoved) {
+            mPath.lineTo(mX, mY);
+            // commit the path to our offscreen
+            mCanvas.drawPath(mPath, mLinePaint);
+        } else {
+            // draw a point if no touch-movement has been detected
+            mCanvas.drawCircle(mX, mY, mLinePaint.getStrokeWidth() / 2, mPointPaint);
+        }
         // kill this so we don't double draw
         mPath.reset();
+        mTouchMoved = false;
     }
 
     private static int getDisplayHeight() {
